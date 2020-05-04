@@ -1,0 +1,31 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 18
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t demo/ecs-sample-app:latest .
+      - docker tag demo/ecs-sample-app:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/demo/ecs-sample-app:latest
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image..
+      # Push the image to ECR.
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/demo/ecs-sample-app:latest
+      - echo Completed pushing Docker image. Deploying Docker image to AWS Fargate on `date`
+      # Create a artifacts file that contains the name and location of the image
+      # pushed to ECR. This will be used by AWS CodePipeline to automate
+      # deployment of this specific container to Amazon ECS.
+      - printf '[{"name":"app","imageUri":"%s"}]' $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/demo/ecs-sample-app:latest > imagedefinitions.json
+artifacts:
+  # Indicate that the created imagedefinitions.json file created on the previous
+  # line is to be referenceable as an artifact of the build execution job.
+  files: imagedefinitions.json

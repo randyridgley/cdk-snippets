@@ -1,0 +1,6 @@
+#!/bin/bash -xe
+
+yum update -y
+amazon-linux-extras install nginx1.12 -y
+systemctl start nginx
+systemctl enable nginx
