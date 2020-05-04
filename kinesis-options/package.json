@@ -1,0 +1,42 @@
+{
+  "name": "kinesis-swiss-army-knife",
+  "version": "0.1.0",
+  "bin": {
+    "kinesis-swiss-army-knife": "bin/kinesis-swiss-army-knife.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@aws-cdk/assert": "1.33.0",
+    "@types/jest": "^24.0.22",
+    "@types/node": "10.17.5",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.1.0",
+    "aws-cdk": "1.33.0",
+    "ts-node": "^8.1.0",
+    "typescript": "~3.7.2"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-cloudformation": "^1.33.0",
+    "@aws-cdk/aws-cloudwatch": "^1.33.0",
+    "@aws-cdk/aws-codebuild": "^1.33.0",
+    "@aws-cdk/aws-codepipeline": "^1.33.0",
+    "@aws-cdk/aws-codepipeline-actions": "^1.33.0",
+    "@aws-cdk/aws-dynamodb": "^1.33.0",
+    "@aws-cdk/aws-glue": "^1.33.0",
+    "@aws-cdk/aws-iam": "^1.33.0",
+    "@aws-cdk/aws-kinesis": "^1.33.0",
+    "@aws-cdk/aws-kinesisanalytics": "^1.33.0",
+    "@aws-cdk/aws-kinesisfirehose": "^1.33.0",
+    "@aws-cdk/aws-lambda": "^1.33.0",
+    "@aws-cdk/aws-logs": "^1.33.0",
+    "@aws-cdk/aws-neptune": "^1.33.0",
+    "@aws-cdk/aws-s3": "^1.33.0",
+    "@aws-cdk/core": "1.33.0",
+    "source-map-support": "^0.5.16"
+  }
+}
