@@ -7,37 +7,43 @@ import iam = require('@aws-cdk/aws-iam');
 import lambda = require('@aws-cdk/aws-lambda');
 import fs = require('fs');
 
+
+export interface FleetProps extends cdk.StackProps {
+  keyname?: string
+  privateIpAddress: string
+  vpcId: string
+  subnetId: string
+}
+
 export class EC2FleetTemplateStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: cdk.Construct, id: string, props: FleetProps) {
     super(scope, id, props);
-
-    const keyname = 'rridgley-default'
-    const privateIpAddress = '10.0.0.20'
     
-    // const vpcId = 'vpc-b323c6d4'
-    // const vpc2 = ec2.Vpc.fromLookup(this, 'fleet-vpc', { vpcId });
-    
-    const vpc = new ec2.Vpc(this, 'vpc', {
-      cidr: '10.0.0.0/16',
-      enableDnsHostnames: true,
-      enableDnsSupport: true,
-      maxAzs: 3,
-      subnetConfiguration: [
-        {
-          name: 'PUB-1',
-          subnetType: ec2.SubnetType.PUBLIC,
-          cidrMask: 24,
-        }
-      ]
+    const vpc = ec2.Vpc.fromLookup(this, 'fleet-vpc', { 
+      vpcId: props.vpcId      
     });
+    
+    // const vpc = new ec2.Vpc(this, 'vpc', {
+    //   cidr: '10.0.0.0/16',
+    //   enableDnsHostnames: true,
+    //   enableDnsSupport: true,
+    //   maxAzs: 3,
+    //   subnetConfiguration: [
+    //     {
+    //       name: 'PUB-1',
+    //       subnetType: ec2.SubnetType.PUBLIC,
+    //       cidrMask: 24,
+    //     }
+    //   ]
+    // });
 
-    const ec2SecurtyGroup = new ec2.SecurityGroup(this, "EC2SecurityGroup", {
+    const ec2SecurityGroup = new ec2.SecurityGroup(this, "EC2SecurityGroup", {
       description: "A Security Group that allows ingress access for HTTP access",
       vpc: vpc
     });
-    ec2SecurtyGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), "webserver access");
-    ec2SecurtyGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), "webserver ssl access");
-    ec2SecurtyGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), "ssh access");
+    ec2SecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), "webserver access");
+    ec2SecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), "webserver ssl access");
+    ec2SecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), "ssh access");
 
     const ec2Role = new Role(this, "EC2Role", {
       assumedBy: new ServicePrincipal("ec2.amazonaws.com"),
@@ -64,7 +70,7 @@ export class EC2FleetTemplateStack extends cdk.Stack {
           ec2.InstanceClass.BURSTABLE2,
           ec2.InstanceSize.SMALL
         ).toString(),
-        keyName: keyname,
+        keyName: props.keyname,
         tagSpecifications: [
           {
             resourceType: "instance",
@@ -81,16 +87,16 @@ export class EC2FleetTemplateStack extends cdk.Stack {
             deviceIndex: 0,
             associatePublicIpAddress: true,
             groups: [
-              ec2SecurtyGroup.securityGroupName,
-              vpc.vpcDefaultSecurityGroup
+              ec2SecurityGroup.securityGroupName,
+              // vpc.vpcDefaultSecurityGroup
             ],
             privateIpAddresses: [
               {
-                privateIpAddress: privateIpAddress,
+                privateIpAddress: props.privateIpAddress,
                 primary: true
               }
             ],
-            subnetId: vpc.publicSubnets[0].subnetId,
+            subnetId: props.subnetId,
           }
         ],
         blockDeviceMappings: [
@@ -111,10 +117,9 @@ export class EC2FleetTemplateStack extends cdk.Stack {
       }
     });
 
-    const createEC2FleetLaunchOverride: (instanceType: string, subnetId: string, availabilityZone: string, priority: number) => ec2.CfnEC2Fleet.FleetLaunchTemplateOverridesRequestProperty = (instanceType: string, subnetId: string, availabilityZone: string, priority: number) => ({
+    const createEC2FleetLaunchOverride: (instanceType: string, subnetId: string, priority: number) => ec2.CfnEC2Fleet.FleetLaunchTemplateOverridesRequestProperty = (instanceType: string, subnetId: string, priority: number) => ({
       instanceType: instanceType,
       subnetId: subnetId,
-      availabilityZone: availabilityZone,
       priority: priority
     });
 
@@ -126,9 +131,9 @@ export class EC2FleetTemplateStack extends cdk.Stack {
             version: launchTemplate.attrLatestVersionNumber
           },
           overrides: [
-            createEC2FleetLaunchOverride('t3.small', vpc.publicSubnets[0].subnetId, vpc.publicSubnets[0].availabilityZone, 1),
-            createEC2FleetLaunchOverride('t2.small', vpc.publicSubnets[0].subnetId, vpc.publicSubnets[0].availabilityZone, 2),
-            createEC2FleetLaunchOverride('m5.large', vpc.publicSubnets[0].subnetId, vpc.publicSubnets[0].availabilityZone, 3)
+            createEC2FleetLaunchOverride('t3.small', props.subnetId, 1),
+            createEC2FleetLaunchOverride('t2.small', props.subnetId, 2),
+            createEC2FleetLaunchOverride('m5.large', props.subnetId, 3)
           ]          
         }
       ],
