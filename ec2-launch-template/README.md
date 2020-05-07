@@ -1,8 +1,14 @@
-# Welcome to your CDK TypeScript project!
+# EC2 Fleet Launch Template with Private IP Address assigned
 
-This is a blank project for TypeScript development with CDK.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+The attributes in the doc passed to the stack need to be changed below in `bin\ec2-launch-template.ts`
+```json
+{
+    privateIpAddress: 'privateIpAddress',
+    keyname: 'sshkey',
+    vpcId: 'vpc-id',
+    subnetId: 'subnet-id'
+}
+```
 
 ## Useful commands
 
