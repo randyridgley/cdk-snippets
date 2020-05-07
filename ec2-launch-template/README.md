@@ -3,10 +3,10 @@
 The attributes in the doc passed to the stack need to be changed below in `bin\ec2-launch-template.ts`
 ```json
 {
-    privateIpAddress: 'privateIpAddress',
-    keyname: 'sshkey',
-    vpcId: 'vpc-id',
-    subnetId: 'subnet-id'
+    "privateIpAddress": "<privateIpAddress>",
+    "keyname": "<sshkey>",
+    "vpcId": "<vpc-id>",
+    "subnetId": "<subnet-id>"
 }
 ```
 
