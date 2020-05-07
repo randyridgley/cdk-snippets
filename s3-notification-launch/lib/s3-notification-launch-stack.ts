@@ -158,7 +158,7 @@ export class S3NotificationLaunchStack extends cdk.Stack {
             },
             {
               name: 'S3_OBJECT_KEY',
-              value: sfn.Data.stringAt('$.Record.body.s3.object.key')
+              value: sfn.Data.stringAt('$.Record.s3.object.key')
             }
           ]
         }]
@@ -199,7 +199,7 @@ export class S3NotificationLaunchStack extends cdk.Stack {
         QUEUE_URL: queue.queueUrl
       },
     });
-  
+    queue.grantSendMessages(publishFunction);
     // //Add subscription to invoke lamabda function
     publishFunction.addEventSource(new SnsEventSource(topic));
   }

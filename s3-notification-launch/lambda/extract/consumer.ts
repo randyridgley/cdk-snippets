@@ -56,14 +56,13 @@ export const handler = async function (event: any) {
         let payload = JSON.parse(records[index].body);
         console.log('processing s3 events ' + payload);
 
-        let s3eventRecords = payload.Records;
+        let s3eventRecords = JSON.parse(payload.Message);
 
         console.log('records '+ s3eventRecords);
 
         for (let i in s3eventRecords) {
 
-            let s3event =  s3eventRecords[i];
-            console.log('s3 event '+ s3event)
+            let s3event =  s3eventRecords[i][0];
 
             //Extract variables from event
             const objectKey = s3event?.s3?.object?.key;
