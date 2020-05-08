@@ -1,4 +1,5 @@
 import * as cdk from '@aws-cdk/core';
+import batch = require('@aws-cdk/aws-batch');
 import ec2 = require('@aws-cdk/aws-ec2');
 import ecs = require('@aws-cdk/aws-ecs');
 import iam = require('@aws-cdk/aws-iam');
@@ -14,6 +15,7 @@ import subscriptions = require('@aws-cdk/aws-sns-subscriptions');
 import sqs = require('@aws-cdk/aws-sqs');
 import { EmptyBucketOnDelete } from './empty-bucket';
 import { RemovalPolicy, Duration } from '@aws-cdk/core';
+import { ComputeEnvironment } from '@aws-cdk/aws-batch';
 
 export class S3NotificationLaunchStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -57,7 +59,6 @@ export class S3NotificationLaunchStack extends cdk.Stack {
 
     const deadLetterQueue = new sqs.Queue(this, 'deadLetterQueue');
 
-    
     const eventbridgePutPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       resources: ['*'],
@@ -77,7 +78,6 @@ export class S3NotificationLaunchStack extends cdk.Stack {
       cpu: 256
     });
 
-    // We need to give our fargate container permission to put events on our EventBridge
     taskDefinition.addToTaskRolePolicy(eventbridgePutPolicy);
     bucket.grantRead(taskDefinition.taskRole);
 
@@ -107,6 +107,7 @@ export class S3NotificationLaunchStack extends cdk.Stack {
         CONTAINER_NAME: container.containerName
       }
     });
+
     queue.grantConsumeMessages(extractLambda);
     extractLambda.addEventSource(new SqsEventSource(queue, {
       batchSize: batchSize
@@ -144,14 +145,6 @@ export class S3NotificationLaunchStack extends cdk.Stack {
         containerOverrides: [{
           containerName: containerName,
           environment: [
-            // {
-            //   name: 'BODY',
-            //   value: sfn.Data.stringAt('$.Record.body')
-            // },
-            // {
-            //   name: 'EXECUTION_ID',
-            //   value: sfn.Context.stringAt('$$.Execution.Id')
-            // },
             {
               name: 'S3_BUCKET_NAME',
               value: bucket.bucketName
@@ -199,8 +192,102 @@ export class S3NotificationLaunchStack extends cdk.Stack {
         QUEUE_URL: queue.queueUrl
       },
     });
+
     queue.grantSendMessages(publishFunction);
-    // //Add subscription to invoke lamabda function
     publishFunction.addEventSource(new SnsEventSource(topic));
+
+    const batchServiceRole = new iam.Role(this, 'BatchServiceRole', {
+      assumedBy: new iam.ServicePrincipal('batch.amazonaws.com'),
+      roleName: "VendorFeedProcessorBatchServiceRole",
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AWSBatchServiceRole')],
+    });
+
+    const batchInstanceRole = new iam.Role(this, 'BatchInstanceRole', {
+        assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+        roleName: "ProcessorBatchInstanceRole",
+        managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+            'service-role/AmazonEC2ContainerServiceforEC2Role'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+            'service-role/AmazonEC2RoleforSSM')
+        ]
+    });
+
+    const batchInstanceProfile = new iam.CfnInstanceProfile(this, 'BatchInstanceProfile', {
+      roles: [batchInstanceRole.roleName]
+    });
+
+    const spotFleetRole = new iam.Role(this, `SpotFleetRole`, {
+      assumedBy: new iam.CompositePrincipal(
+          new iam.ServicePrincipal('ec2.amazonaws.com')),
+      managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2SpotFleetTaggingRole'),
+      ]
+    });
+
+    const computeEnvironment = new batch.ComputeEnvironment(this, 'ComputeEnvironment', {
+      managed: true,      
+      computeResources: {
+        type: batch.ComputeResourceType.SPOT,
+        maxvCpus: 128,
+        minvCpus: 0,
+        desiredvCpus: 0,            
+        vpc: vpc,              
+        instanceRole: batchInstanceProfile.attrArn,   
+        allocationStrategy: batch.AllocationStrategy.SPOT_CAPACITY_OPTIMIZED,
+        spotFleetRole: spotFleetRole
+      },
+      serviceRole: batchServiceRole,
+      enabled: true
+    });
+
+    const jobQueue = new batch.JobQueue(this, 'BatchQueue', {
+      computeEnvironments: [
+        {
+          computeEnvironment: computeEnvironment,
+          order: 1
+        }
+      ]
+    });
+
+    const batchJobRole = new iam.Role(this, 'BatchJobRole', {
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      roleName: "ProcessorBatchJobRole",
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
+      ]
+    });
+
+    const jobDefinition = new batch.JobDefinition(this, 'Job', {
+      container: {
+        image: ecs.ContainerImage.fromAsset('container/s3data'),
+        jobRole: batchJobRole,
+        vcpus: 1,
+        memoryLimitMiB: 512
+      }
+    });
+
+    const batchLambda = new lambda.Function(this, 'batchLambdaHandler', {
+      runtime: lambda.Runtime.NODEJS_12_X,
+      code: lambda.Code.asset('lambda/batch'), 
+      handler: 'consumer.handler',
+      reservedConcurrentExecutions: LAMBDA_THROTTLE_SIZE,
+      environment: {
+        JOB_DEFINITION: jobDefinition.jobDefinitionArn,
+        JOB_QUEUE: jobQueue.jobQueueArn,
+        JOB_NAME: 'BatchProcessingJob'
+      }
+    });
+
+    batchLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['batch:SubmitJob'],
+        resources: [
+          jobDefinition.jobDefinitionArn,
+          jobQueue.jobQueueArn,
+        ]
+      })
+    );
   }
 }

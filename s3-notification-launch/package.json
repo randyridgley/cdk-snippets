@@ -22,6 +22,7 @@
     "typescript": "~3.7.2"
   },
   "dependencies": {
+    "@aws-cdk/aws-batch": "1.36.1",
     "@aws-cdk/aws-ec2": "1.36.1",
     "@aws-cdk/aws-ecs": "1.36.1",
     "@aws-cdk/aws-lambda-event-sources": "1.36.1",
