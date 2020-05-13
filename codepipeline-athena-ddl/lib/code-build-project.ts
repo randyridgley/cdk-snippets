@@ -44,11 +44,11 @@ export class CodeBuildProject extends codebuild.PipelineProject {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,            
           },
           REPO_URL: {
-            value: props.databaseName,
+            value: props.gitRepoUrl,
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,            
           },
           REPO_BRANCH: {
-            value: props.databaseName,
+            value: props.gitBranch,
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,            
           }
         },
@@ -68,6 +68,7 @@ export class CodeBuildProject extends codebuild.PipelineProject {
               'echo "Updating to latest boto versions"',
               'pip install --upgrade awscli',
               'pip install --upgrade boto3',
+              'echo $REPO_URL'
             ],
           },
           pre_build: {

@@ -129,7 +129,7 @@ get_last_ddl_update_time() {
 }
 
 run_athena_query() {
-  location="s3://${datalake_bucket}/${2}"
+  location="${datalake_bucket}/${2}"
   query=$(echo ${1} | sed 's|${LOCATION}|'"${location}"'|g')
   # echo ${query}
   query_id=$(aws athena start-query-execution \
