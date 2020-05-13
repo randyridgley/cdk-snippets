@@ -12,7 +12,7 @@ export class PipelineBuildRole extends Role {
   constructor(scope: cdk.Construct, id: string, props: PipelineBuildRoleProps) {
     super(scope, id, props)
 
-    const serviceStackPrefix = scope.node.tryGetContext('serviceStackName') || 'usurper'
+    const serviceStackPrefix = scope.node.tryGetContext('serviceStackName')
     const serviceStacks = props.stages.map(stage => `${serviceStackPrefix}-${stage}`)
 
     // Allow checking what policies are attached to this role
