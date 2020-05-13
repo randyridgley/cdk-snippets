@@ -9,10 +9,11 @@ export interface CodeBuildProjectProps extends codebuild.PipelineProjectProps {
   readonly stage: string
   readonly role: Role
   readonly contact: string
-  readonly owner: string,
   readonly databaseName: string
   readonly artifactBucket: SecureBucket
   readonly dataBucket: SecureBucket
+  readonly gitRepoUrl: string
+  readonly gitBranch: string
 }
 
 export class CodeBuildProject extends codebuild.PipelineProject {
@@ -38,11 +39,15 @@ export class CodeBuildProject extends codebuild.PipelineProject {
             value: props.contact,
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
           },
-          OWNER: {
-            value: props.owner,
-            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          },
           DATABASE: {
+            value: props.databaseName,
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,            
+          },
+          REPO_URL: {
+            value: props.databaseName,
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,            
+          },
+          REPO_BRANCH: {
             value: props.databaseName,
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,            
           }
@@ -51,6 +56,9 @@ export class CodeBuildProject extends codebuild.PipelineProject {
       role: props.role,
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
+        env: {
+          'git-credential-helper': 'yes',
+        },
         phases: {
           install: {
             'runtime-versions': {
@@ -63,7 +71,7 @@ export class CodeBuildProject extends codebuild.PipelineProject {
             ],
           },
           pre_build: {
-            commands: [],
+            commands: ['codepipeline-athena-ddl/scripts/codebuild-git-wrapper.sh "$REPO_URL" "$REPO_BRANCH"'],
           },
           build: {
             commands: ['codepipeline-athena-ddl/scripts/deploy.sh -d ' + props.databaseName + ' -e ' + props.stage + ' -l s3://' + props.artifactBucket.bucketName + '/' + props.stage + '/logs/ -b s3://' + props.dataBucket.bucketName + '/ -w codepipeline-athena-ddl/tables'],

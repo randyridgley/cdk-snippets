@@ -10,6 +10,7 @@ import SecureBucket from './secure-bucket'
 import { PipelineNotifications } from './pipeline-notifications'
 import { CodeBuildProject } from './code-build-project'
 import { PipelineBuildRole } from './pipeline-build-role'
+import { EmptyBucketOnDelete } from './empty-bucket';
 
 export interface PipelineStackProps extends cdk.StackProps {
   readonly gitOwner: string
@@ -30,9 +31,21 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
 
     const artifactBucket = new SecureBucket(this, 'ArtifactBucket', {})
 
+    const emptyArtifactBucket = new EmptyBucketOnDelete(this, 'EmptyArtifactBucket', {
+      bucket: artifactBucket
+    });
+
     const testBucket = new SecureBucket(this, 'TestBucket', {})
 
+    const emptyTestBucket = new EmptyBucketOnDelete(this, 'EmptyTestBucket', {
+      bucket: testBucket
+    });
+
     const prodBucket = new SecureBucket(this, 'ProdBucket', {})
+
+    const emptyProdBucket = new EmptyBucketOnDelete(this, 'EmptyBucket', {
+      bucket: prodBucket
+    });
 
     new s3deploy.BucketDeployment(this, 'DeployTest', {
       sources: [s3deploy.Source.asset('./data')],
@@ -82,6 +95,8 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
       actions: [sourceAction],
     })
 
+    const gitRepo = `https://github.com/${props.gitOwner}/${props.gitRepository}.git`
+
     // DEPLOY TO TEST
     const deployToTestProject = new CodeBuildProject(this, 'CodeBuildTestBuildProject', {
       ...props,
@@ -89,7 +104,9 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
       role: codebuildRole,
       databaseName: props.dbName,
       artifactBucket: artifactBucket,
-      dataBucket: testBucket
+      dataBucket: testBucket,
+      gitRepoUrl: gitRepo,
+      gitBranch: props.gitBranch
     })
     const deployToTestAction = new codepipeline_actions.CodeBuildAction({
       actionName: 'Build_and_Deploy',
@@ -119,7 +136,9 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
       role: codebuildRole,
       databaseName: props.dbName,
       artifactBucket: artifactBucket,
-      dataBucket: prodBucket
+      dataBucket: prodBucket,
+      gitRepoUrl: gitRepo,
+      gitBranch: props.gitBranch
     })
     const deployToProdAction = new codepipeline_actions.CodeBuildAction({
       actionName: 'Build_and_Deploy',
