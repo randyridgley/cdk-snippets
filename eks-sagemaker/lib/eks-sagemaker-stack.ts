@@ -71,8 +71,8 @@ export class EksSagemakerStack extends cdk.Stack {
       name: 'eksConsole',
       // repositories: [
       //   {
-      //     pathComponent: '/401kube',
-      //     repositoryUrl: 'https://github.com/jyidiego/401kube.git'
+      //     pathComponent: '/cdk-snippets',
+      //     repositoryUrl: 'https://github.com/randyridgley/cdk-snippets.git'
       //   }
       // ],
       subnetId: vpc.selectSubnets( { onePerAz: true, subnetType: SubnetType.PUBLIC}).subnetIds[0],
