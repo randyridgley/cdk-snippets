@@ -43,8 +43,6 @@ get_last_ddl_commit_time() {
 #
 # $1 -> location
 find_tables_to_update() {
-  cd ${1}
-
   # Loop over all the directories...
   for dir in $(find . -type d -exec sh -c '(ls -p "{}"|grep />/dev/null)||echo "{}"' \; | cut -c 3-); do
 
@@ -87,7 +85,6 @@ find_tables_to_update() {
 # Applies DDL for those tables which need an update
 # $1 -> layer
 apply_tables_to_update() {
-  cd ${1}
   for dir in ${tables_to_update[@]}; do
     initial_dir=$(pwd)
     cd ${dir}
@@ -108,20 +105,6 @@ print_tables_to_update() {
   for table in ${tables_to_update[@]}; do
     echo -e "\t${table}"
   done
-}
-
-# get_s3_location
-#
-# Returns proper S3 location string for a tables
-#
-# $1 -> s3 bucket
-# $2 -> env
-# $3 -> table
-get_s3_location() {
-
-  s3_location="s3://${1}/${2}/${3}"
-  echo ${s3_location}
-
 }
 
 # get_last_ddl_update_time
@@ -146,7 +129,7 @@ get_last_ddl_update_time() {
 }
 
 run_athena_query() {
-  location=$(get_s3_location ${datalake_bucket} ${env} ${2})
+  location="s3://${datalake_bucket}/${2}"
   query=$(echo ${1} | sed 's|${LOCATION}|'"${location}"'|g')
   # echo ${query}
   query_id=$(aws athena start-query-execution \
@@ -182,14 +165,16 @@ usage () {
   echo "    -h: print this help message"
   echo "    -l: Athena logs bucket"
   echo "    -n: Database name"
+  echo "    -b: S3 data bucket"
 }
 
-while getopts b:l:e:d:uh opt; do
+while getopts b:l:e:d:w:uh opt; do
   case ${opt} in
     b) datalake_bucket=${OPTARG};;
     d) database=${OPTARG};;
     e) env=${OPTARG};;
     l) logs_bucket=${OPTARG};;
+    w) working_directory=${OPTARG};;
     h)
       usage
       exit 0
@@ -217,10 +202,17 @@ if [[ -z ${database} ]]; then
   exit 1
 fi
 
+if [[ -z ${working_directory} ]]; then
+  echo `date` "Working directory is required parameter."
+  usage
+  exit 1
+fi
+
+cd ${working_directory}
 create_glue_database ${database} ${env}
 
 echo `date` "Beginning DDL deploy process for env ${env}"
-find_tables_to_update 'tables'
+find_tables_to_update 
 print_tables_to_update
-apply_tables_to_update 'tables'
+apply_tables_to_update
 echo `date` "DDL deploy process complete for env ${env}"

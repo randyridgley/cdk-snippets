@@ -1,8 +1,9 @@
 import codebuild = require('@aws-cdk/aws-codebuild')
 import { Role } from '@aws-cdk/aws-iam'
 import cdk = require('@aws-cdk/core')
+import s3 = require('@aws-cdk/aws-s3')
 
-import ArtifactBucket from './artifact-bucket'
+import { SecureBucket } from './secure-bucket'
 
 export interface CodeBuildProjectProps extends codebuild.PipelineProjectProps {
   readonly stage: string
@@ -10,7 +11,8 @@ export interface CodeBuildProjectProps extends codebuild.PipelineProjectProps {
   readonly contact: string
   readonly owner: string,
   readonly databaseName: string
-  readonly bucket: ArtifactBucket
+  readonly artifactBucket: SecureBucket
+  readonly dataBucket: SecureBucket
 }
 
 export class CodeBuildProject extends codebuild.PipelineProject {
@@ -41,7 +43,7 @@ export class CodeBuildProject extends codebuild.PipelineProject {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
           },
           DATABASE: {
-            value: props.database,
+            value: props.databaseName,
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,            
           }
         },
@@ -57,14 +59,16 @@ export class CodeBuildProject extends codebuild.PipelineProject {
             commands: [
               'echo "Updating to latest boto versions"',
               'pip install --upgrade awscli',
-              'pip install --upgrade boto3'
+              'pip install --upgrade boto3',
+              'echo $PWD',
+              'ls'
             ],
           },
           pre_build: {
             commands: [],
           },
           build: {
-            commands: ['./scripts/codebuild/deploy.sh -d ' + props.database + ' -e ' + props.stage + ' -l s3://' + props.bucket.bucketName + '/' + props.stage + '/logs/'],
+            commands: ['codepipeline-athena-ddl/scripts/deploy.sh -d ' + props.databaseName + ' -e ' + props.stage + ' -l s3://' + props.artifactBucket.bucketName + '/' + props.stage + '/logs/ -b s3://' + props.dataBucket.bucketName + '/ -w codepipeline-athena-ddl/tables'],
           },
           post_build: {
             commands: [

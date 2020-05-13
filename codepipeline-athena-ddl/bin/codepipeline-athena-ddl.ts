@@ -8,8 +8,9 @@ new CodepipelineAthenaDdlStack(app, 'CodepipelineAthenaDdlStack', {
     contact: 'rridgley@amazon.com',
     emails: 'rridgley@amazon.com',
     gitOwner: 'randyridgley',
-    githubBranch: 'master',
-    githubRepository: 'cdk-snippets',
+    gitBranch: 'master',
+    gitRepository: 'cdk-snippets',
     gitTokenPath: 'randyridgley',
-    owner: '12345'
+    owner: '12345',
+    dbName: 'iot'
 });
