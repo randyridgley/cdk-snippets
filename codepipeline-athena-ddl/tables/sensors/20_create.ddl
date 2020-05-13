@@ -2,7 +2,7 @@ CREATE EXTERNAL TABLE `sensors`(
   `datetime` string COMMENT 'from deserializer', 
   `sensorid` int COMMENT 'from deserializer', 
   `temp` int COMMENT 'from deserializer', 
-  `battery` string COMMENT 'from deserializer')
+  `battery` string COMMENT 'from deserializer battery comment')
 PARTITIONED BY ( 
   `year` string, 
   `month` string, 
