@@ -32,11 +32,11 @@ get_last_ddl_commit_time() {
             --date=raw ${ddl_file} \
             | awk '{ print $1 }')
     if [[ ${last_ddl_commit_time} < ${time} ]]; then
-      result=${time}
+      last_ddl_commit_time=${time}
     fi
   done
 
-  echo ${result}
+  echo ${last_ddl_commit_time}
 }
 
 # find_tables_to_update
@@ -61,7 +61,6 @@ find_tables_to_update() {
 
     # Get last time DDL was updated
     last_ddl_update_time=$(get_last_ddl_update_time ${table})
-
     # if there is no ddl update time, then we need to update it!
     # set last update time to zero so we apply ddl
     if [[ 0 -eq ${last_ddl_update_time} ]]; then
@@ -73,11 +72,10 @@ find_tables_to_update() {
     # commits were made to these files.
     cd ${dir}
     last_ddl_commit_time=$(get_last_ddl_commit_time)
-
     # if we have commits more recently than the ddl was updated, then
     # we need to update the ddl on this table
     if [[ ${last_ddl_update_time} < ${last_ddl_commit_time} ]]; then
-      tables_to_update+=$(${dir})
+      tables_to_update+=(${dir})
     fi
     cd ${initial_dir}
   done
@@ -116,10 +114,12 @@ print_tables_to_update() {
 #
 # Returns proper S3 location string for a tables
 #
-# $1 -> env
+# $1 -> s3 bucket
+# $2 -> env
+# $3 -> table
 get_s3_location() {
 
-  s3_location="s3://analytics-serverless-west/${1}/${2}"
+  s3_location="s3://${1}/${2}/${3}"
   echo ${s3_location}
 
 }
@@ -129,15 +129,11 @@ get_s3_location() {
 # Determines last time DDL was updated on a table by querying AWS Glue
 # $2 -> table
 get_last_ddl_update_time() {
-
-  db_name=${db}
-
   output=$(aws glue get-table \
-            --database ${db_name} \
-            --name ${2} \
+            --database "${db}" \
+            --name "${1}" \
             --query 'Table.Parameters.transient_lastDdlTime' \
-            --output text 2>&1 > /dev/null)
-
+            --output text )
   result=$?
 
   # if we have non-zero exit code, treat as table doesn't exist by returning 0
@@ -150,9 +146,9 @@ get_last_ddl_update_time() {
 }
 
 run_athena_query() {
-  location=$(get_s3_location ${env} ${2})
+  location=$(get_s3_location ${datalake_bucket} ${env} ${2})
   query=$(echo ${1} | sed 's|${LOCATION}|'"${location}"'|g')
-  echo ${query}
+  # echo ${query}
   query_id=$(aws athena start-query-execution \
               --query-string "${query}" \
               --query-execution-context Database=${db} \
@@ -188,11 +184,12 @@ usage () {
   echo "    -n: Database name"
 }
 
-while getopts l:e:d:uh opt; do
+while getopts b:l:e:d:uh opt; do
   case ${opt} in
-    l) logs_bucket=${OPTARG};;
+    b) datalake_bucket=${OPTARG};;
     d) database=${OPTARG};;
-    e) env=${OPTARG};;    
+    e) env=${OPTARG};;
+    l) logs_bucket=${OPTARG};;
     h)
       usage
       exit 0
