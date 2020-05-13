@@ -60,8 +60,6 @@ export class CodeBuildProject extends codebuild.PipelineProject {
               'echo "Updating to latest boto versions"',
               'pip install --upgrade awscli',
               'pip install --upgrade boto3',
-              'echo $PWD',
-              'ls'
             ],
           },
           pre_build: {

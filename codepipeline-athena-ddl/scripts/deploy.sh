@@ -86,7 +86,7 @@ find_tables_to_update() {
 # $1 -> layer
 apply_tables_to_update() {
   for dir in ${tables_to_update[@]}; do
-    initial_dir=$(pwd)
+    initial_dir=${working_dir}
     cd ${dir}
     echo `date` "Updating ${dir##*/}..."
     for ddl_file in $(find . -name "*.ddl" | sort); do

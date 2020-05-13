@@ -90,25 +90,15 @@ export class PipelineBuildRole extends Role {
 
     // Allow creating and managing glue resources with this stack name 
     const glueStatement = new PolicyStatement({
-      resources: [], // Added later dynamically
+      resources: ['*'], // Added later dynamically
       actions: ['glue:*'],
-    })
-    serviceStacks.forEach(stackName => {
-      glueStatement.addResources(
-        Fn.sub('arn:aws:glue:${AWS::Region}:${AWS::AccountId}:function:' + stackName + '*'),
-      )
     })
     this.addToPolicy(glueStatement)
 
     // Allow creating and managing glue resources with this stack name 
     const athenaStatement = new PolicyStatement({
-      resources: [], // Added later dynamically
+      resources: ['*'], // Added later dynamically
       actions: ['athena:*'],
-    })
-    serviceStacks.forEach(stackName => {
-      athenaStatement.addResources(
-        Fn.sub('arn:aws:athena:${AWS::Region}:${AWS::AccountId}:function:' + stackName + '*'),
-      )
     })
     this.addToPolicy(athenaStatement)
     
