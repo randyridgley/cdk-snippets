@@ -27,7 +27,7 @@ export class EmptyBucketOnDelete extends cdk.Construct {
             memorySize: 512,
             environment: {
                 bucket_name: props.bucket.bucketName,
-            }
+            }        
         });
 
         props.bucket.grantReadWrite(emptyBucketLambda);

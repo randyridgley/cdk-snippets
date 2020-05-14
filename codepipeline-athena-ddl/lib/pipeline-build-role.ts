@@ -1,6 +1,7 @@
 import { PolicyStatement, Role, RoleProps } from '@aws-cdk/aws-iam'
 import { Bucket } from '@aws-cdk/aws-s3'
 import cdk = require('@aws-cdk/core')
+import iam = require('@aws-cdk/aws-iam')
 import { Fn } from '@aws-cdk/core'
 
 export interface PipelineBuildRoleProps extends RoleProps {
@@ -92,6 +93,16 @@ export class PipelineBuildRole extends Role {
     const glueStatement = new PolicyStatement({
       resources: ['*'], // Added later dynamically
       actions: ['glue:*'],
+    })
+    this.addToPolicy(glueStatement)
+    this.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSGlueServiceRole'))
+
+    const lfStatement = new PolicyStatement({
+      resources: ['*'], // Added later dynamically
+      actions: [
+        'lakformation:GetDataAccess',
+        'lakeformation:GrantPermissions'
+      ],
     })
     this.addToPolicy(glueStatement)
 
