@@ -79,7 +79,7 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
       artifactBucket,
     });
 
-    new lf.CfnDataLakeSettings(this, 'PipelineRoleAdmin', {
+    const adminRole = new lf.CfnDataLakeSettings(this, 'PipelineRoleAdmin', {
       admins: [{
           dataLakePrincipalIdentifier: codebuildRole.roleArn
         }        
@@ -168,26 +168,29 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
           database: dbName
         })
 
-        new glue.Database(this, dbName, {
+        const glueDb = new glue.Database(this, dbName, {
           databaseName: dbName,
           locationUri: `s3://${bucket.bucketName}/`
         });
+        glueDb.node.addDependency(adminRole)
+        
+        const dbPermission = new lf.CfnPermissions(this, stage + 'PipelineRolePermission', {
+          dataLakePrincipal: {
+            dataLakePrincipalIdentifier: codebuildRole.roleArn,        
+          },
+          resource: {
+            databaseResource: {
+              name: dbName
+            }
+          },
+          permissions: [
+            'ALTER',
+            'CREATE_TABLE',
+            'DROP'
+          ]
+        });
 
-        // new lf.CfnPermissions(this, stage + 'PipelineRolePermission', {
-        //   dataLakePrincipal: {
-        //     dataLakePrincipalIdentifier: codebuildRole.roleArn,        
-        //   },
-        //   resource: {
-        //     databaseResource: {
-        //       name: dbName
-        //     }
-        //   },
-        //   permissions: [
-        //     'ALTER',
-        //     'CREATE_TABLE',
-        //     'DROP'
-        //   ]
-        // });
+        dbPermission.node.addDependency(glueDb);
       })
     });
 
