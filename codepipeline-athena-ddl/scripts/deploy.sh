@@ -143,7 +143,7 @@ run_athena_query() {
               --query 'QueryExecution.Status.State' \
               --output text)
 
-  while [ RUNNING == ${query_state} ] || [ SUBMITTED == ${query_state}] || [ QUEUED == ${query_state}]; do
+  while [[ RUNNING == ${query_state} || SUBMITTED == ${query_state} || QUEUED == ${query_state}]]; do
     query_state=$(aws athena get-query-execution \
                 --query-execution-id ${query_id} \
                 --query 'QueryExecution.Status.State' \
