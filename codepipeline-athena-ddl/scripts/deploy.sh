@@ -151,6 +151,7 @@ run_athena_query() {
   done
 
   if [[ SUCCEEDED != $query_state ]]; then
+    echo ${query_state}
     echo `date` "DDL execution failed. Exiting!"
     exit 1
   fi
