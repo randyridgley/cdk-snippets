@@ -40,35 +40,11 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
     super(scope, id, props);
 
     const artifactBucket = new SecureBucket(this, 'ArtifactBucket', {})
-
-    // const emptyArtifactBucket = new EmptyBucketOnDelete(this, 'EmptyArtifactBucket', {
-    //   bucket: artifactBucket
-    // });
-
-    // const testBucket = new SecureBucket(this, 'TestBucket', {})
-
-    // const emptyTestBucket = new EmptyBucketOnDelete(this, 'EmptyTestBucket', {
-    //   bucket: testBucket
-    // });
-
-    // const prodBucket = new SecureBucket(this, 'ProdBucket', {})
-
-    // const emptyProdBucket = new EmptyBucketOnDelete(this, 'EmptyBucket', {
-    //   bucket: prodBucket
-    // });
-
-    // new s3deploy.BucketDeployment(this, 'DeployTest', {
-    //   sources: [s3deploy.Source.asset('./data')],
-    //   destinationBucket: testBucket,
-    //   destinationKeyPrefix: 'sensors' 
-    // });
-
-    // new s3deploy.BucketDeployment(this, 'DeployProd', {
-    //   sources: [s3deploy.Source.asset('./data')],
-    //   destinationBucket: prodBucket,
-    //   destinationKeyPrefix: 'sensors'
-    // });
     
+    const emptyBucket = new EmptyBucketOnDelete(this, 'ArtifactBucketEmpty', {
+      bucket: artifactBucket
+    });
+
     const codepipelineRole = new iam.Role(this, 'CodePipelineRole', {
       assumedBy: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
     });
@@ -198,7 +174,7 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
       const stageProject = ps.stage + 'CodeBuildProject'
       const deployProject = new CodeBuildProject(this, stageProject, {
         ...props,
-        stage: 'test',
+        stage: ps.stage,
         role: codebuildRole,
         databaseName: props.dbName,
         artifactBucket: artifactBucket,
@@ -235,28 +211,5 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
         })
       }
     })
-
-    // // DEPLOY TO PROD
-    // const deployToProdProject = new CodeBuildProject(this, 'CodeBuildProdBuildProject', {
-    //   ...props,
-    //   stage: 'prod',
-    //   role: codebuildRole,
-    //   databaseName: props.dbName,
-    //   artifactBucket: artifactBucket,
-    //   dataBucket: prodBucket,
-    //   gitRepoUrl: gitRepo,
-    //   gitBranch: props.gitBranch
-    // })
-    // const deployToProdAction = new codepipeline_actions.CodeBuildAction({
-    //   actionName: 'Build_and_Deploy',
-    //   project: deployToProdProject,
-    //   input: sourceOutput
-    // })
-
-    // // PROD STAGE
-    // pipeline.addStage({
-    //   stageName: 'DeployToProd',
-    //   actions: [deployToProdAction],
-    // })
   }
 }
