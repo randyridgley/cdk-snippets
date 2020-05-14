@@ -147,6 +147,7 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
         const glueDb = new glue.Database(this, dbName, {
           databaseName: dbName,
           locationUri: `s3://${bucket.bucketName}/`
+
         });
         glueDb.node.addDependency(adminRole)
         

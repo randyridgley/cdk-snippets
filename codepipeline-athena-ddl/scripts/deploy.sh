@@ -88,6 +88,20 @@ apply_tables_to_update() {
     initial_dir=$(pwd)
     cd ${dir}
     echo `date` "Updating ${dir##*/}..."
+    calling_arn=`aws sts get-caller-identity | jq '.Arn' | sed 's|\"||g'`
+    
+    principal=$( jq -n \
+                  --arg ca "${calling_arn}}" \
+                  '{DataLakePrincipalIdentifier: $ca}' )
+
+    resource=$( jq -n \
+                  --arg db "${db}" \
+                  --arg nm "${dir}" \
+                  '{Table: { DatabaseName:$db, Name: $nm }}' )
+
+    output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT"]')
+    result=$?
+
     for ddl_file in $(find . -name "*.ddl" | sort); do
       ddl=$(< ${ddl_file})
       echo `date` "Executing DDL in ${ddl_file}... "
@@ -143,7 +157,7 @@ run_athena_query() {
               --query 'QueryExecution.Status.State' \
               --output text)
 
-  while [[ RUNNING == ${query_state} || SUBMITTED == ${query_state} || QUEUED == ${query_state}]]; do
+  while [ RUNNING == ${query_state} ] || [ SUBMITTED == ${query_state} ] || [ QUEUED == ${query_state} ]; do
     query_state=$(aws athena get-query-execution \
                 --query-execution-id ${query_id} \
                 --query 'QueryExecution.Status.State' \

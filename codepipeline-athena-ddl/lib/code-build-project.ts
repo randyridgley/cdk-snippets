@@ -68,7 +68,7 @@ export class CodeBuildProject extends codebuild.PipelineProject {
               'echo "Updating to latest boto versions"',
               'pip install --upgrade awscli',
               'pip install --upgrade boto3',
-              'echo $REPO_URL'
+              'apt-get install -y jq'
             ],
           },
           pre_build: {

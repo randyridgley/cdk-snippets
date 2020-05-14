@@ -104,7 +104,7 @@ export class PipelineBuildRole extends Role {
         'lakeformation:GrantPermissions'
       ],
     })
-    this.addToPolicy(glueStatement)
+    this.addToPolicy(lfStatement)
 
     // Allow creating and managing glue resources with this stack name 
     const athenaStatement = new PolicyStatement({
