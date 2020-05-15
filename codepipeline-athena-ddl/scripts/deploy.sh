@@ -147,7 +147,7 @@ get_last_ddl_update_time() {
 run_athena_query() {
   location="${datalake_bucket}/${2}/"
   query=$(echo ${1} | sed 's|${LOCATION}|'"${location}"'|g')
-  # echo ${query}
+
   query_id=$(aws athena start-query-execution \
               --query-string "${query}" \
               --query-execution-context Database=${db} \
@@ -168,7 +168,7 @@ run_athena_query() {
   done
 
   if [[ SUCCEEDED != $query_state ]]; then
-    echo ${query_state}
+    echo "${query_state} - ${query_id} - ${query}"
     echo `date` "DDL execution failed. Exiting!"
     exit 1
   fi
