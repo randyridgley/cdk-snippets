@@ -108,8 +108,10 @@ apply_tables_to_update() {
     output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT", "SELECT"]')
     result=$?    
 
+    # lazy hack will fix sometime this century
+    cd ${root_dir}
     account_id=$(aws sts get-caller-identity --output text --query Account)
-    python partition-update.py -b ${datalake_bucket} -p ${dir} -a ${account_id} -d ${db} -t ${dir}
+    python codepipeline-athena-ddl/scripts/partition-update.py -b ${datalake_bucket} -p ${dir} -a ${account_id} -d ${db} -t ${dir}
 
     echo `date` "Completed updates to ${dir##*/}"
     cd ${initial_dir}
@@ -226,6 +228,8 @@ if [[ -z ${working_directory} ]]; then
   usage
   exit 1
 fi
+
+root_dir=$(pwd)
 
 cd ${working_directory}
 create_glue_database ${database} ${env}
