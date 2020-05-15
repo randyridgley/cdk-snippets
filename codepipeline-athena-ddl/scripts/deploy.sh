@@ -90,8 +90,10 @@ apply_tables_to_update() {
     echo `date` "Updating ${dir##*/}..."
 
     principal=$( jq -n \
-                  --arg ca "${owner}}" \
-                  '{DataLakePrincipalIdentifier: $ca}' )
+                  --arg ca "${owner}" \
+                  '{ DataLakePrincipalIdentifier: $ca }' )
+
+    echo ${principal}
 
     resource=$( jq -n \
                   --arg db "${db}" \
@@ -188,7 +190,7 @@ while getopts b:l:e:d:o:w:uh opt; do
     d) database=${OPTARG};;
     e) env=${OPTARG};;
     l) logs_bucket=${OPTARG};;
-    o) onwer=${OPTARG};;
+    o) owner=${OPTARG};;
     w) working_directory=${OPTARG};;
     h)
       usage
