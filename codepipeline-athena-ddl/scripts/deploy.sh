@@ -105,7 +105,7 @@ apply_tables_to_update() {
               --arg nm "${dir}" \
               '{Table: { DatabaseName:$db, Name: $nm }}' )
 
-    output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT"]')
+    output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT", "SELECT"]')
     result=$?    
 
     sleep 5
