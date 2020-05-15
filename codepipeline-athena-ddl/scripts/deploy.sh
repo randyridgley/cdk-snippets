@@ -180,6 +180,7 @@ usage () {
   echo "    -l: Athena logs bucket"
   echo "    -n: Database name"
   echo "    -b: S3 data bucket"
+  echo "    -o: Glue Database Table Owner Role ARN"
 }
 
 while getopts b:l:e:d:w:uh opt; do
@@ -188,6 +189,7 @@ while getopts b:l:e:d:w:uh opt; do
     d) database=${OPTARG};;
     e) env=${OPTARG};;
     l) logs_bucket=${OPTARG};;
+    o) onwer=${OPTARG};;
     w) working_directory=${OPTARG};;
     h)
       usage

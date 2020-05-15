@@ -75,7 +75,7 @@ export class CodeBuildProject extends codebuild.PipelineProject {
             commands: ['codepipeline-athena-ddl/scripts/codebuild-git-wrapper.sh "$REPO_URL" "$REPO_BRANCH"'],
           },
           build: {
-            commands: ['codepipeline-athena-ddl/scripts/deploy.sh -d ' + props.databaseName + ' -e ' + props.stage + ' -l s3://' + props.artifactBucket.bucketName + '/' + props.stage + '/logs/ -b s3://' + props.dataBucket.bucketName + '/ -w codepipeline-athena-ddl/tables'],
+            commands: ['codepipeline-athena-ddl/scripts/deploy.sh -d ' + props.databaseName + ' -e ' + props.stage + ' -l s3://' + props.artifactBucket.bucketName + '/' + props.stage + '/logs/ -b s3://' + props.dataBucket.bucketName + '/ -w codepipeline-athena-ddl/tables -o ' + props.role.roleArn],
           },
           post_build: {
             commands: [
