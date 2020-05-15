@@ -147,8 +147,8 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
         const glueDb = new glue.Database(this, dbName, {
           databaseName: dbName,
           locationUri: `s3://${bucket.bucketName}/`
-
         });
+        
         glueDb.node.addDependency(adminRole)
         
         const dbPermission = new lf.CfnPermissions(this, stage + 'PipelineRolePermission', {
@@ -164,6 +164,11 @@ export class CodepipelineAthenaDdlStack extends cdk.Stack {
             'ALTER',
             'CREATE_TABLE',
             'DROP'
+          ],
+          permissionsWithGrantOption: [
+            'ALTER',
+            'CREATE_TABLE',
+            'DROP'            
           ]
         });
 

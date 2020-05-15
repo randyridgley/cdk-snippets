@@ -88,20 +88,17 @@ apply_tables_to_update() {
     initial_dir=$(pwd)
     cd ${dir}
     echo `date` "Updating ${dir##*/}..."
+    # principal=$( jq -n \
+    #               --arg ca "${owner}" \
+    #               '{ DataLakePrincipalIdentifier: $ca }' )
 
-    principal=$( jq -n \
-                  --arg ca "${owner}" \
-                  '{ DataLakePrincipalIdentifier: $ca }' )
+    # resource=$( jq -n \
+    #           --arg db "${db}" \
+    #           --arg nm "${dir}" \
+    #           '{Table: { DatabaseName:$db, Name: $nm }}' )
 
-    echo ${principal}
-
-    resource=$( jq -n \
-                  --arg db "${db}" \
-                  --arg nm "${dir}" \
-                  '{Table: { DatabaseName:$db, Name: $nm }}' )
-
-    output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT"]')
-    result=$?
+    # output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT"]')
+    # result=$?    
 
     for ddl_file in $(find . -name "*.ddl" | sort); do
       ddl=$(< ${ddl_file})
@@ -109,6 +106,7 @@ apply_tables_to_update() {
       run_athena_query "${ddl}" ${dir}
       echo `date` "Done."
     done
+
     echo `date` "Completed updates to ${dir##*/}"
     cd ${initial_dir}
   done
