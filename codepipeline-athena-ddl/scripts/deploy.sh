@@ -88,10 +88,9 @@ apply_tables_to_update() {
     initial_dir=$(pwd)
     cd ${dir}
     echo `date` "Updating ${dir##*/}..."
-    calling_arn=`aws sts get-caller-identity | jq '.Arn' | sed 's|\"||g'`
-    
+
     principal=$( jq -n \
-                  --arg ca "${calling_arn}}" \
+                  --arg ca "${owner}}" \
                   '{DataLakePrincipalIdentifier: $ca}' )
 
     resource=$( jq -n \
