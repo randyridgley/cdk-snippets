@@ -26,6 +26,8 @@ def main(argv):
             database_name = arg
         elif opt in ("-t", "--table_name"):
             table_name = arg                                    
+        
+    bucket = bucket[5:-1]
     
     response = s3.list_objects_v2(
         Bucket=bucket,
