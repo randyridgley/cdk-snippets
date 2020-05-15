@@ -108,9 +108,8 @@ apply_tables_to_update() {
     output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT", "SELECT"]')
     result=$?    
 
-    sleep 5
-    # Need to run partition update after adding lf permission. This is kinda a hack and not all tables have partitions so tread lightly
-    run_athena_query "MSCK REPAIR TABLE ${dir}" ${dir}
+    account_id=$(aws sts get-caller-identity --output text --query Account)
+    python partition-update.py -b ${datalake_bucket} -p ${dir} -a ${account_id} -d ${db} -t ${dir}
 
     echo `date` "Completed updates to ${dir##*/}"
     cd ${initial_dir}
