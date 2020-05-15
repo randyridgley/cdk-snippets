@@ -183,7 +183,7 @@ usage () {
   echo "    -o: Glue Database Table Owner Role ARN"
 }
 
-while getopts b:l:e:d:w:uh opt; do
+while getopts b:l:e:d:o:w:uh opt; do
   case ${opt} in
     b) datalake_bucket=${OPTARG};;
     d) database=${OPTARG};;
