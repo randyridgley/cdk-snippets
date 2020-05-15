@@ -108,6 +108,7 @@ apply_tables_to_update() {
     output=$(aws lakeformation grant-permissions --principal "$principal" --resource "$resource" --permissions '["ALTER", "DELETE", "DROP", "INSERT"]')
     result=$?    
 
+    sleep 5
     # Need to run partition update after adding lf permission. This is kinda a hack and not all tables have partitions so tread lightly
     run_athena_query "MSCK REPAIR TABLE ${dir}" ${dir}
 
