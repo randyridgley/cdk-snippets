@@ -11,6 +11,5 @@ new CodepipelineAthenaDdlStack(app, 'CodepipelineAthenaDdlStack', {
     gitBranch: 'master',
     gitRepository: 'cdk-snippets',
     gitTokenPath: 'randyridgley',
-    owner: '12345',
     dbName: 'iot'
 });

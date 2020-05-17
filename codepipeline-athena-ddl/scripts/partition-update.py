@@ -28,7 +28,7 @@ def main(argv):
             table_name = arg                                    
         
     bucket = bucket[5:-1]
-    
+
     response = s3.list_objects_v2(
         Bucket=bucket,
         Prefix=prefix
@@ -52,7 +52,7 @@ def main(argv):
         keys =  obj['Key'].split('/')[1:-1]
         # get the values of the prefixes in between. These are the year,month,day,hour values to be used for the partition
         values = [k.split('=')[1] for k in keys]
-        storage_descriptor['Location'] = '{0}{1}'.format(location, '/'.join(keys))
+        storage_descriptor['Location'] = '{0}/{1}'.format(location, '/'.join(keys))
         partitions.add(json.dumps({"StorageDescriptor": storage_descriptor ,"Values": list(values)}))
 
     print(partitions)

@@ -21,7 +21,6 @@ export interface PipelineStackProps extends cdk.StackProps {
   readonly gitRepository: string
   readonly gitBranch: string
   readonly contact: string
-  readonly owner: string
   readonly emails: string
   readonly dbName: string
 }
