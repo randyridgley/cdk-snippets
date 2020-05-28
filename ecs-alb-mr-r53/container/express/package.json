@@ -1,0 +1,14 @@
+{
+    "name": "express_web_app_ecs",
+    "version": "1.0.0",
+    "description": "Node.js ECS Application",
+    "author": "Randy Ridgley",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "aws-sdk": "^2.686.0",
+        "express": "^4.16.1"
+    }
+}
