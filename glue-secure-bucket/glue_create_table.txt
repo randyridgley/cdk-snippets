@@ -1,0 +1,69 @@
+{
+    "Table": {
+        "Name": "r_sensors",
+        "DatabaseName": "secure_db",
+        "Description": "Raw Sensor Data",
+        "CreateTime": "2020-06-29T16:08:44-04:00",
+        "UpdateTime": "2020-06-29T16:08:44-04:00",
+        "Retention": 0,
+        "StorageDescriptor": {
+            "Columns": [
+                {
+                    "Name": "datetime",
+                    "Type": "string"
+                },
+                {
+                    "Name": "sensorid",
+                    "Type": "int"
+                },
+                {
+                    "Name": "temp",
+                    "Type": "int"
+                },
+                {
+                    "Name": "battery",
+                    "Type": "string"
+                }
+            ],
+            "Location": "s3://gluesecurebucketstack-rawdatalakebucket33783e46-1531osmb3r3uz/data/sensors/",
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "Compressed": false,
+            "NumberOfBuckets": 0,
+            "SerdeInfo": {
+                "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
+                "Parameters": {
+                    "paths": "battery,datetime,sensorid,temp"
+                }
+            },
+            "SortColumns": [],
+            "StoredAsSubDirectories": false
+        },
+        "PartitionKeys": [
+            {
+                "Name": "year",
+                "Type": "string"
+            },
+            {
+                "Name": "month",
+                "Type": "string"
+            },
+            {
+                "Name": "day",
+                "Type": "string"
+            },
+            {
+                "Name": "hour",
+                "Type": "string"
+            }
+        ],
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {
+            "classification": "json",
+            "has_encrypted_data": "false",
+            "typeOfData": "file"
+        },
+        "CreatedBy": "arn:aws:iam::649037252677:user/randy",
+        "IsRegisteredWithLakeFormation": true
+    }
+}

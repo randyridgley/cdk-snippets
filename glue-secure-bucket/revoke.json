@@ -1,0 +1,14 @@
+{
+    "CatalogId": "649037252677",
+    "Principal": {
+        "DataLakePrincipalIdentifier": "arn:aws:iam::649037252677:user/randy"
+    },
+    "Resource": {
+        "DataLocation": {
+            "ResourceArn": "arn:aws:s3:::gluesecurebucketstack-rawdatalakebucket33783e46-e7wfc51z65po"
+        }
+    },
+    "Permissions": [
+        "DATA_ACCESS_LOCATION"
+    ]
+}

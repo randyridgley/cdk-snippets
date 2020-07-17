@@ -1,0 +1,1340 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "Deploy Machine Learning Models as Serverless APIs",
+    "Parameters": {
+        "BuildCode": {
+            "Type": "String",
+            "Default": "https://github.com/aws-samples/serverless-machine-learning-on-aws",
+            "Description": "Enter the Github repo that contains the buildspec.yaml for CodeBuild to create Lambda Layers."
+        },
+        "InferenceCode": {
+            "Type": "String",
+            "Default": "https://github.com/aws-samples/serverless-machine-learning-on-aws/raw/master/demo/inference.zip",
+            "Description": "Enter a URL for the Lambda inference .zip package."
+        },
+        "FrontendCode": {
+            "Type": "String",
+            "Default": "https://github.com/aws-samples/serverless-machine-learning-on-aws/raw/master/demo/frontend.html",
+            "Description": "Enter a URL for the static frontend code."
+        }
+    },
+    "Mappings" : {
+        "RegionMap" : {
+            "ap-northeast-1": {"RequestsLayer": "arn:aws:lambda:ap-northeast-1:249908578461:layer:AWSLambda-Python-AWS-SDK:5"},
+            "us-east-1": {"RequestsLayer": "arn:aws:lambda:us-east-1:668099181075:layer:AWSLambda-Python-AWS-SDK:5"},
+            "ap-southeast-1": {"RequestsLayer": "arn:aws:lambda:ap-southeast-1:468957933125:layer:AWSLambda-Python-AWS-SDK:5"},
+            "eu-west-1": {"RequestsLayer": "arn:aws:lambda:eu-west-1:399891621064:layer:AWSLambda-Python-AWS-SDK:5"},
+            "us-west-1": {"RequestsLayer": "arn:aws:lambda:us-west-1:325793726646:layer:AWSLambda-Python-AWS-SDK:5"},
+            "ap-east-1": {"RequestsLayer": "arn:aws:lambda:ap-east-1:118857876118:layer:AWSLambda-Python-AWS-SDK:5"},
+            "ap-northeast-2": {"RequestsLayer": "arn:aws:lambda:ap-northeast-2:296580773974:layer:AWSLambda-Python-AWS-SDK:5"},
+            "ap-northeast-3": {"RequestsLayer": "arn:aws:lambda:ap-northeast-3:961244031340:layer:AWSLambda-Python-AWS-SDK:5"},
+            "ap-south-1": {"RequestsLayer": "arn:aws:lambda:ap-south-1:631267018583:layer:AWSLambda-Python-AWS-SDK:5"},
+            "ap-southeast-2": {"RequestsLayer": "arn:aws:lambda:ap-southeast-2:817496625479:layer:AWSLambda-Python-AWS-SDK:5"},
+            "ca-central-1": {"RequestsLayer": "arn:aws:lambda:ca-central-1:778625758767:layer:AWSLambda-Python-AWS-SDK:5"},
+            "eu-central-1": {"RequestsLayer": "arn:aws:lambda:eu-central-1:292169987271:layer:AWSLambda-Python-AWS-SDK:5"},
+            "eu-north-1": {"RequestsLayer": "arn:aws:lambda:eu-north-1:642425348156:layer:AWSLambda-Python-AWS-SDK:5"},
+            "eu-west-2": {"RequestsLayer": "arn:aws:lambda:eu-west-2:142628438157:layer:AWSLambda-Python-AWS-SDK:5"},
+            "eu-west-3": {"RequestsLayer": "arn:aws:lambda:eu-west-3:959311844005:layer:AWSLambda-Python-AWS-SDK:5"},
+            "sa-east-1": {"RequestsLayer": "arn:aws:lambda:sa-east-1:640010853179:layer:AWSLambda-Python-AWS-SDK:5"},
+            "us-east-2": {"RequestsLayer": "arn:aws:lambda:us-east-2:259788987135:layer:AWSLambda-Python-AWS-SDK:5"},
+            "us-west-2": {"RequestsLayer": "arn:aws:lambda:us-west-2:420165488524:layer:AWSLambda-Python-AWS-SDK:6"},
+            "cn-north-1": {"RequestsLayer": "arn:aws-cn:lambda:cn-north-1:683298794825:layer:AWSLambda-Python-AWS-SDK:5"},
+            "cn-northwest-1": {"RequestsLayer": "arn:aws-cn:lambda:cn-northwest-1:382066503313:layer:AWSLambda-Python-AWS-SDK:5"},
+            "us-gov-west": {"RequestsLayer": "arn:aws-us-gov:lambda:us-gov-west-1:556739011827:layer:AWSLambda-Python-AWS-SDK:5"},
+            "us-gov-east": {"RequestsLayer": "arn:aws-us-gov:lambda:us-gov-east-1:138526772879:layer:AWSLambda-Python-AWS-SDK:5"}
+        }
+    },
+    "Resources": {
+        "ECRRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecr:GetAuthorizationToken",
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:GetRepositoryPolicy",
+                                        "ecr:DescribeRepositories",
+                                        "ecr:ListImages",
+                                        "ecr:DescribeImages",
+                                        "ecr:BatchGetImage"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        },
+                        "PolicyName": "ECRPolicy"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "Cloudwatch"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:GetObject",
+                                        "s3:DeleteObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "/",
+                                            [
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "LambdaLayerBucket",
+                                                        "Arn"
+                                                    ]
+                                                },
+                                                "*"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        "PolicyName": "S3"
+                    }
+                ]
+            }
+        },
+        "LambdaLayerBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "LifecycleConfiguration": {
+                    "Rules": [
+                        {
+                            "Status": "Enabled",
+                            "NoncurrentVersionExpirationInDays": 30,
+                            "Transitions": [
+                                {
+                                    "StorageClass": "STANDARD_IA",
+                                    "TransitionInDays": 30
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "project",
+                        "Value": "lambda-layers"
+                    }
+                ],
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "MLBuild": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Artifacts": {
+                    "ArtifactIdentifier": "mxnet",
+                    "Location": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "Name": "mxnet.zip",
+                    "NamespaceType": "NONE",
+                    "Packaging": "ZIP",
+                    "Path": "layers/",
+                    "Type": "S3"
+                },
+                "SecondaryArtifacts": [
+                    {
+                        "ArtifactIdentifier": "keras",
+                        "Location": {
+                            "Fn::Select": [
+                                "1",
+                                {
+                                    "Fn::Split": [
+                                        ":::",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaLayerBucket",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "Name": "keras.zip",
+                        "NamespaceType": "NONE",
+                        "Packaging": "ZIP",
+                        "Path": "layers/",
+                        "Type": "S3"
+                    },
+                    {
+                        "ArtifactIdentifier": "pillow",
+                        "Location": {
+                            "Fn::Select": [
+                                "1",
+                                {
+                                    "Fn::Split": [
+                                        ":::",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaLayerBucket",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "Name": "pillow.zip",
+                        "NamespaceType": "NONE",
+                        "Packaging": "ZIP",
+                        "Path": "layers/",
+                        "Type": "S3"
+                    },
+                    {
+                        "ArtifactIdentifier": "scipy",
+                        "Location": {
+                            "Fn::Select": [
+                                "1",
+                                {
+                                    "Fn::Split": [
+                                        ":::",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaLayerBucket",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "Name": "scipy.zip",
+                        "NamespaceType": "NONE",
+                        "Packaging": "ZIP",
+                        "Path": "layers/",
+                        "Type": "S3"
+                    },
+                    {
+                        "ArtifactIdentifier": "gluonnlp",
+                        "Location": {
+                            "Fn::Select": [
+                                "1",
+                                {
+                                    "Fn::Split": [
+                                        ":::",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaLayerBucket",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "Name": "gluonnlp.zip",
+                        "NamespaceType": "NONE",
+                        "Packaging": "ZIP",
+                        "Path": "layers/",
+                        "Type": "S3"
+                    },
+                    {
+                        "ArtifactIdentifier": "gluoncv",
+                        "Location": {
+                            "Fn::Select": [
+                                "1",
+                                {
+                                    "Fn::Split": [
+                                        ":::",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaLayerBucket",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "Name": "gluoncv.zip",
+                        "NamespaceType": "NONE",
+                        "Packaging": "ZIP",
+                        "Path": "layers/",
+                        "Type": "S3"
+                    },
+                    {
+                        "ArtifactIdentifier": "sklearn",
+                        "Location": {
+                            "Fn::Select": [
+                                "1",
+                                {
+                                    "Fn::Split": [
+                                        ":::",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaLayerBucket",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "Name": "sklearn.zip",
+                        "NamespaceType": "NONE",
+                        "Packaging": "ZIP",
+                        "Path": "layers/",
+                        "Type": "S3"
+                    }
+                ],
+                "Description": "Build zipped Lambda Layer packages for machine learning.",
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "Image": "aws/codebuild/amazonlinux2-x86_64-standard:1.0",
+                    "Type": "LINUX_CONTAINER"
+                },
+                "LogsConfig": {
+                    "CloudWatchLogs": {
+                        "Status": "ENABLED",
+                        "StreamName": "MLLayers"
+                    }
+                },
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "ECRRole",
+                        "Arn"
+                    ]
+                },
+                "Source": {
+                    "Type": "GITHUB",
+                    "Location": {
+                        "Ref": "BuildCode"
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "project",
+                        "Value": "lambda-layers"
+                    }
+                ]
+            }
+        },
+        "BuildLambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "Cloudwatch"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "MLBuild",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ],
+                                    "Action": [
+                                        "codebuild:StartBuild",
+                                        "codebuild:BatchGetBuilds"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "/",
+                                            [
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "LambdaLayerBucket",
+                                                        "Arn"
+                                                    ]
+                                                },
+                                                "*"
+                                            ]
+                                        ]
+                                    },
+                                    "Action": [
+                                        "s3:PutObject"
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "CodeBuild"
+                    }
+                ]
+            }
+        },
+        "BuildFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Environment": {
+                    "Variables": {
+                        "PROJECT_NAME": {
+                            "Ref": "MLBuild"
+                        }
+                    }
+                },
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import time",
+                                "import urllib3",
+                                "import os",
+                                "import boto3",
+                                "import json",
+                                "http = urllib3.PoolManager()",
+                                "def send(event, context, responseStatus, responseData, pool_manager, physicalResourceId=None, noEcho=False):",
+                                "   responseUrl = event['ResponseURL']",
+                                "   responseBody = {}",
+                                "   responseBody['Status'] = responseStatus",
+                                "   responseBody['Reason'] = 'See the details in CloudWatch Log Stream: ' + context.log_stream_name",
+                                "   responseBody['PhysicalResourceId'] = physicalResourceId or context.log_stream_name",
+                                "   responseBody['StackId'] = event['StackId']",
+                                "   responseBody['RequestId'] = event['RequestId']",
+                                "   responseBody['LogicalResourceId'] = event['LogicalResourceId']",
+                                "   responseBody['NoEcho'] = noEcho",
+                                "   responseBody['Data'] = responseData",
+                                "   json_responseBody = json.dumps(responseBody)",
+                                "   print('Response body:' + json_responseBody)",
+                                "   headers = {",
+                                "       'content-type' : '',",
+                                "       'content-length' : str(len(json_responseBody))",
+                                "   }",
+                                "   try:",
+                                "       response = pool_manager.request('PUT',",
+                                "                               responseUrl,",
+                                "                               body=json_responseBody,",
+                                "                               headers=headers)",
+                                "       print('Status code: ' + str(response.status))",
+                                "   except Exception as e:",
+                                "       print('send(..) failed executing request: ' + str(e))",
+                                "def build(event, context):",
+                                "   if event['RequestType'] == 'Create':",
+                                "      s3 = boto3.resource('s3')",
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "      lambda_layers = '",
+                                            {
+                                                "Ref": "LambdaLayerBucket"
+                                            },
+                                            "'"
+                                        ]
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "      response = http.request('GET','",
+                                            {
+                                                "Ref": "InferenceCode"
+                                            },
+                                            "')"
+                                        ]
+                                    ]
+                                },
+                                "      object = s3.Object(lambda_layers, 'demo/inference.zip')",
+                                "      object.put(Body=response.data, ContentType='application/zip')",
+                                "      client = boto3.client('codebuild')",
+                                "      response = client.start_build(projectName=os.environ['PROJECT_NAME'])",
+                                "      response = client.batch_get_builds(ids=[response['build']['id']])",
+                                "      while response['builds'][0]['buildStatus'] == 'IN_PROGRESS':",
+                                "          response = client.batch_get_builds(ids=[response['builds'][0]['id']])",
+                                "          time.sleep(5)",
+                                "      response_data = 'FAILED'",
+                                "      if response['builds'][0]['buildStatus'] == 'SUCCEEDED':",
+                                "          status = 'SUCCESS'",
+                                "          response_data = 'SUCCESS'",
+                                "      else:",
+                                "          status = 'FAILED'",
+                                "   else:",
+                                "      status = 'SUCCESS'",
+                                "      response_data = 'NA'",
+                                "   send(event, context, status, {'result': response_data}, pool_manager=http)"
+                            ]
+                        ]
+                    }
+                },
+                "Handler": "index.build",
+                "Layers": [
+                    { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "RequestsLayer"]}
+                ],
+                "Runtime": "python3.7",
+                "Timeout": "600",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "BuildLambdaRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "BuiltS3": {
+            "Type": "Custom::LaunchBuild",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "BuildFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "MXNetLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+                "CompatibleRuntimes": [
+                    "python3.7"
+                ],
+                "Content": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "layers/mxnet.zip"
+                },
+                "Description": "Lambda layer for the MXNet",
+                "LayerName": "MXNet"
+            },
+            "DependsOn": [
+                "BuiltS3"
+            ]
+        },
+        "GluonCVLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+                "CompatibleRuntimes": [
+                    "python3.7"
+                ],
+                "Content": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "layers/gluoncv.zip"
+                },
+                "Description": "Gluon computer vision extension to MXNet",
+                "LayerName": "GluonCV"
+            },
+            "DependsOn": [
+                "BuiltS3"
+            ]
+        },
+        "GluonNLPLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+                "CompatibleRuntimes": [
+                    "python3.7"
+                ],
+                "Content": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "layers/gluonnlp.zip"
+                },
+                "Description": "Gluon natural language processing extension to MXNet",
+                "LayerName": "GluonNLP"
+            },
+            "DependsOn": [
+                "BuiltS3"
+            ]
+        },
+        "MXNetKerasLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+                "CompatibleRuntimes": [
+                    "python3.7"
+                ],
+                "Content": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "layers/keras.zip"
+                },
+                "Description": "Keras extension to MXNet",
+                "LayerName": "MXNetKeras"
+            },
+            "DependsOn": [
+                "BuiltS3"
+            ]
+        },
+        "PillowLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+                "CompatibleRuntimes": [
+                    "python3.7"
+                ],
+                "Content": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "layers/pillow.zip"
+                },
+                "Description": "Lambda layer for the Pillow image processing",
+                "LayerName": "Pillow"
+            },
+            "DependsOn": [
+                "BuiltS3"
+            ]
+        },
+        "SciPyLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+                "CompatibleRuntimes": [
+                    "python3.7"
+                ],
+                "Content": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "layers/scipy.zip"
+                },
+                "Description": "Lambda layer for the scipy scientific computation library",
+                "LayerName": "SciPy"
+            },
+            "DependsOn": [
+                "BuiltS3"
+            ]
+        },
+        "SKLearnLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+                "CompatibleRuntimes": [
+                    "python3.7"
+                ],
+                "Content": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "layers/sklearn.zip"
+                },
+                "Description": "Lambda layer for the SKLearn library",
+                "LayerName": "SKLearn"
+            },
+            "DependsOn": [
+                "BuiltS3"
+            ]
+        },
+        "MXNetLambda": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "Cloudwatch"
+                    }
+                ]
+            }
+        },
+        "Inference": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaLayerBucket"
+                    },
+                    "S3Key": "demo/inference.zip"
+                },
+                "Handler": "inference.lambda_handler",
+                "Runtime": "python3.7",
+                "Timeout": "120",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MXNetLambda",
+                        "Arn"
+                    ]
+                },
+                "Layers": [
+                    {
+                        "Ref": "MXNetLayer"
+                    },
+                    {
+                        "Ref": "SciPyLayer"
+                    },
+                    {
+                        "Ref": "PillowLayer"
+                    },
+                    {
+                        "Ref": "GluonCVLayer"
+                    }
+                    
+                ],
+                "MemorySize": 3008
+            }
+        },
+        "InferenceAPI": {
+            "Type": "AWS::Serverless::Api",
+            "Properties": {
+                "StageName": "Production",
+                "DefinitionBody": {
+                    "swagger": "2.0",
+                    "info": {
+                        "description": "API to call machine learning Lambda",
+                        "title": "Machine Learning REST API"
+                    },
+                    "basePath": "/Detector",
+                    "schemes": [
+                        "https"
+                    ],
+                    "paths": {
+                        "/": {
+                            "post": {
+                                "consumes": [
+                                    "application/json"
+                                ],
+                                "produces": [
+                                    "image/jpeg",
+                                    "application/json"
+                                ],
+                                "parameters": [
+                                    {
+                                        "in": "body",
+                                        "name": "Empty",
+                                        "required": true,
+                                        "schema": {
+                                            "$ref": "#/definitions/Empty"
+                                        }
+                                    }
+                                ],
+                                "responses": {
+                                    "200": {
+                                        "description": "200 response",
+                                        "schema": {
+                                            "$ref": "#/definitions/Empty"
+                                        },
+                                        "headers": {
+                                            "Access-Control-Allow-Origin": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "400": {
+                                        "description": "400 response"
+                                    }
+                                },
+                                "x-amazon-apigateway-integration": {
+                                    "uri": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:apigateway:",
+                                                {
+                                                    "Ref": "AWS::Region"
+                                                },
+                                                ":lambda:path/2015-03-31/functions/",
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "Inference",
+                                                        "Arn"
+                                                    ]
+                                                },
+                                                "/invocations"
+                                            ]
+                                        ]
+                                    },
+                                    "responses": {
+                                        "default": {
+                                            "statusCode": "200",
+                                            "responseParameters": {
+                                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                                            }
+                                        },
+                                        "ProcessingError": {
+                                            "statusCode": "400",
+                                            "contentHandling": "CONVERT_TO_TEXT"
+                                        }
+                                    },
+                                    "passthroughBehavior": "when_no_match",
+                                    "httpMethod": "POST",
+                                    "contentHandling": "CONVERT_TO_TEXT",
+                                    "type": "aws"
+                                }
+                            },
+                            "options": {
+                                "consumes": [
+                                    "application/json"
+                                ],
+                                "produces": [
+                                    "application/json"
+                                ],
+                                "responses": {
+                                    "200": {
+                                        "description": "200 response",
+                                        "schema": {
+                                            "$ref": "#/definitions/Empty"
+                                        },
+                                        "headers": {
+                                            "Access-Control-Allow-Origin": {
+                                                "type": "string"
+                                            },
+                                            "Access-Control-Allow-Methods": {
+                                                "type": "string"
+                                            },
+                                            "Access-Control-Allow-Headers": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "x-amazon-apigateway-integration": {
+                                    "responses": {
+                                        "default": {
+                                            "statusCode": "200",
+                                            "responseParameters": {
+                                                "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS'",
+                                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                                            }
+                                        }
+                                    },
+                                    "passthroughBehavior": "when_no_match",
+                                    "requestTemplates": {
+                                        "application/json": "{\"statusCode\": 200}"
+                                    },
+                                    "type": "mock"
+                                }
+                            }
+                        }
+                    },
+                    "definitions": {
+                        "Empty": {
+                            "type": "object",
+                            "title": "Empty Schema"
+                        }
+                    }
+                }
+            }
+        },
+        "IntegrationAPI": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "Inference",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:aws:execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "InferenceAPI"
+                            },
+                            "/*/POST/"
+                        ]
+                    ]
+                }
+            }
+        },
+        "InferenceApp": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "LifecycleConfiguration": {
+                    "Rules": [
+                        {
+                            "Status": "Enabled",
+                            "NoncurrentVersionExpirationInDays": 30,
+                            "Transitions": [
+                                {
+                                    "StorageClass": "STANDARD_IA",
+                                    "TransitionInDays": 30
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "project",
+                        "Value": "lambda-layers"
+                    }
+                ],
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "S3CleanupRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "Cloudwatch"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaLayerBucket",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "InferenceApp",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ],
+                                    "Action": [
+                                        "s3:*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "/",
+                                                [
+                                                    {
+                                                        "Fn::GetAtt": [
+                                                            "InferenceApp",
+                                                            "Arn"
+                                                        ]
+                                                    },
+                                                    "*"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "/",
+                                                [
+                                                    {
+                                                        "Fn::GetAtt": [
+                                                            "LambdaLayerBucket",
+                                                            "Arn"
+                                                        ]
+                                                    },
+                                                    "*"
+                                                ]
+                                            ]
+                                        }
+                                    ],
+                                    "Action": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "AllBucketActions"
+                    }
+                ]
+            }
+        },
+        "s3Lambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import json",
+                                "import boto3",
+                                "import zipfile",
+                                "import urllib3",
+                                "s3 = boto3.resource('s3')",
+                                "http = urllib3.PoolManager()",
+                                "def send(event, context, responseStatus, responseData, pool_manager, physicalResourceId=None, noEcho=False):",
+                                "   responseUrl = event['ResponseURL']",
+                                "   responseBody = {}",
+                                "   responseBody['Status'] = responseStatus",
+                                "   responseBody['Reason'] = 'See the details in CloudWatch Log Stream: ' + context.log_stream_name",
+                                "   responseBody['PhysicalResourceId'] = physicalResourceId or context.log_stream_name",
+                                "   responseBody['StackId'] = event['StackId']",
+                                "   responseBody['RequestId'] = event['RequestId']",
+                                "   responseBody['LogicalResourceId'] = event['LogicalResourceId']",
+                                "   responseBody['NoEcho'] = noEcho",
+                                "   responseBody['Data'] = responseData",
+                                "   json_responseBody = json.dumps(responseBody)",
+                                "   print('Response body:' + json_responseBody)",
+                                "   headers = {",
+                                "       'content-type' : '',",
+                                "       'content-length' : str(len(json_responseBody))",
+                                "   }",
+                                "   try:",
+                                "       response = pool_manager.request('PUT',",
+                                "                               responseUrl,",
+                                "                               body=json_responseBody,",
+                                "                               headers=headers)",
+                                "       print('Status code: ' + str(response.status))",
+                                "   except Exception as e:",
+                                "       print('send(..) failed executing request: ' + str(e))",
+                                "def delete_all(bucket_name):",
+                                "    bucket = s3.Bucket(bucket_name)",
+                                "    bucket.object_versions.delete()",
+                                "def cleanup(event, context):",
+                                "    try:",
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "        lambda_layers = '",
+                                            {
+                                                "Ref": "LambdaLayerBucket"
+                                            },
+                                            "'"
+                                        ]
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "        front_end = '",
+                                            {
+                                                "Ref": "InferenceApp"
+                                            },
+                                            "'"
+                                        ]
+                                    ]
+                                },
+                                "        if event['RequestType'] == 'Delete':",
+                                "            delete_all(lambda_layers)",
+                                "            delete_all(front_end)",
+                                "        if event['RequestType'] == 'Create':",
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "            response = http.request('GET','",
+                                            {
+                                                "Ref": "FrontendCode"
+                                            },
+                                            "')"
+                                        ]
+                                    ]
+                                },
+                                "            text = response.data.decode('utf-8')",
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "            text = text.replace('API_GATEWAY_ENDPOINT_URL','https://",
+                                            {
+                                                "Ref": "InferenceAPI"
+                                            },
+                                            ".execute-api.",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            ".amazonaws.com/Production/')"
+                                        ]
+                                    ]
+                                },
+                                "            object = s3.Object(front_end, 'frontend.html')",
+                                "            object.put(Body=text.encode(), ContentType='text/html')",
+                                "        send(event, context, 'SUCCESS', {'result': 'SUCCESS'}, http)",
+                                "    except Exception as e:",
+                                "        print(e)",
+                                "        send(event, context, 'FAILED', {'result': 'FAILED'}, http)"
+                            ]
+                        ]
+                    }
+                },
+                "Handler": "index.cleanup",
+                "Runtime": "python3.7",
+                "Timeout": "600",
+                "Layers": [
+                    { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "RequestsLayer"]}
+                ],
+                "Role": {
+                    "Fn::GetAtt": [
+                        "S3CleanupRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "s3Operations": {
+            "Type": "Custom::s3Operations",
+            "DependsOn": [
+                "LambdaLayerBucket",
+                "s3Lambda",
+                "InferenceApp"
+            ],
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "s3Lambda",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "AppPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Ref": "InferenceApp"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "CanonicalUser": {
+                                    "Fn::GetAtt": [
+                                        "CloudfrontOAI",
+                                        "S3CanonicalUserId"
+                                    ]
+                                }
+                            },
+                            "Action": "s3:GetObject",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "InferenceApp",
+                                                "Arn"
+                                            ]
+                                        },
+                                        "/*"
+                                    ]
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "AppDistribution": {
+            "Type": "AWS::CloudFront::Distribution",
+            "Properties": {
+                "DistributionConfig": {
+                    "DefaultCacheBehavior": {
+                        "Compress": true,
+                        "ForwardedValues": {
+                            "QueryString": false
+                        },
+                        "TargetOriginId": {
+                            "Ref": "InferenceApp"
+                        },
+                        "ViewerProtocolPolicy": "redirect-to-https"
+                    },
+                    "DefaultRootObject": "frontend.html",
+                    "CustomErrorResponses": [
+                        {
+                            "ErrorCachingMinTTL": 300,
+                            "ErrorCode": 403,
+                            "ResponseCode": 404,
+                            "ResponsePagePath": "/404.html"
+                        }
+                    ],
+                    "Enabled": true,
+                    "HttpVersion": "http2",
+                    "Origins": [
+                        {
+                            "DomainName": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Ref": "InferenceApp"
+                                        },
+                                        ".s3.amazonaws.com"
+                                    ]
+                                ]
+                            },
+                            "Id": {
+                                "Ref": "InferenceApp"
+                            },
+                            "S3OriginConfig": {
+                                "OriginAccessIdentity": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "origin-access-identity/cloudfront/",
+                                            {
+                                                "Ref": "CloudfrontOAI"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "PriceClass": "PriceClass_100",
+                    "ViewerCertificate": {
+                        "CloudFrontDefaultCertificate": true,
+                        "MinimumProtocolVersion": "TLSv1"
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "project",
+                        "Value": "lambda-layers"
+                    }
+                ]
+            }
+        },
+        "CloudfrontOAI": {
+            "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+            "Properties": {
+                "CloudFrontOriginAccessIdentityConfig": {
+                    "Comment": "S3 Origin Access Identity"
+                }
+            }
+        }
+    },
+    "Outputs" : {
+        "CloudFrontURL" : {
+          "Description" : "Frontend URL",
+          "Value" : {"Fn::GetAtt": [
+            "AppDistribution",
+            "DomainName"
+            ]}
+        }
+      }
+}

@@ -113,124 +113,124 @@ export class KinesisSwissArmyKnifeStack extends cdk.Stack {
         startingPosition: lambda.StartingPosition.LATEST
     })
 
-    new NeptuneNotebooks(this, 'NeptuneNotebook', {
-      vpc: vpcNetwork.vpc
-    })
+    // new NeptuneNotebooks(this, 'NeptuneNotebook', {
+    //   vpc: vpcNetwork.vpc
+    // })
 
-    const artifacts = new BuildArtifacts(this, 'BuildArtifacts', {
-      bucket: bucket,
-      flinkVersion: '1.8.2',
-      scalaVersion: '2.11',
-      flinkConsumerVersion: 'master'
-    });
+    // const artifacts = new BuildArtifacts(this, 'BuildArtifacts', {
+    //   bucket: bucket,
+    //   flinkVersion: '1.8.2',
+    //   scalaVersion: '2.11',
+    //   flinkConsumerVersion: 'master'
+    // });
 
-    const logGroup = new logs.LogGroup(this, 'KdaLogGroup', {
-      retention: RetentionDays.ONE_WEEK,
-      removalPolicy: RemovalPolicy.DESTROY
-    });
+    // const logGroup = new logs.LogGroup(this, 'KdaLogGroup', {
+    //   retention: RetentionDays.ONE_WEEK,
+    //   removalPolicy: RemovalPolicy.DESTROY
+    // });
 
-    const logStream = new logs.LogStream(this, 'KdaLogStream', {
-      logGroup: logGroup,
-      removalPolicy: RemovalPolicy.DESTROY
-    });
+    // const logStream = new logs.LogStream(this, 'KdaLogStream', {
+    //   logGroup: logGroup,
+    //   removalPolicy: RemovalPolicy.DESTROY
+    // });
 
-    const logStreamArn = `arn:${cdk.Aws.PARTITION}:logs:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:log-group:${logGroup.logGroupName}:log-stream:${logStream.logStreamName}`;
+    // const logStreamArn = `arn:${cdk.Aws.PARTITION}:logs:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:log-group:${logGroup.logGroupName}:log-stream:${logStream.logStreamName}`;
 
-    const kdaRole = new iam.Role(this, 'KdaRole', {
-      assumedBy: new iam.ServicePrincipal('kinesisanalytics.amazonaws.com'),
-    });
+    // const kdaRole = new iam.Role(this, 'KdaRole', {
+    //   assumedBy: new iam.ServicePrincipal('kinesisanalytics.amazonaws.com'),
+    // });
 
-    bucket.grantReadWrite(kdaRole);
-    stream.grantRead(kdaRole);
+    // bucket.grantReadWrite(kdaRole);
+    // stream.grantRead(kdaRole);
 
-    kdaRole.addToPolicy(new iam.PolicyStatement({
-      actions: [ 'kinesis:ListShards'],
-      resources: [ stream.streamArn ]
-    }))
+    // kdaRole.addToPolicy(new iam.PolicyStatement({
+    //   actions: [ 'kinesis:ListShards'],
+    //   resources: [ stream.streamArn ]
+    // }))
 
-    kdaRole.addToPolicy(new iam.PolicyStatement({
-      actions: [ 'kinesis:PutRecord', 'kinesis:PutRecordBatch'],
-      resources: [ outStream.streamArn ]
-    }))
+    // kdaRole.addToPolicy(new iam.PolicyStatement({
+    //   actions: [ 'kinesis:PutRecord', 'kinesis:PutRecordBatch'],
+    //   resources: [ outStream.streamArn ]
+    // }))
 
-    kdaRole.addToPolicy(new iam.PolicyStatement({
-      actions: [ 'cloudwatch:PutMetricData' ],
-      resources: [ '*' ]
-    }));
+    // kdaRole.addToPolicy(new iam.PolicyStatement({
+    //   actions: [ 'cloudwatch:PutMetricData' ],
+    //   resources: [ '*' ]
+    // }));
 
-    kdaRole.addToPolicy(new iam.PolicyStatement({
-      actions: [ 'logs:DescribeLogStreams', 'logs:DescribeLogGroups' ],
-      resources: [
-        logGroup.logGroupArn,
-        `arn:${cdk.Aws.PARTITION}:logs:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:log-group:*`
-      ]
-    }));
+    // kdaRole.addToPolicy(new iam.PolicyStatement({
+    //   actions: [ 'logs:DescribeLogStreams', 'logs:DescribeLogGroups' ],
+    //   resources: [
+    //     logGroup.logGroupArn,
+    //     `arn:${cdk.Aws.PARTITION}:logs:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:log-group:*`
+    //   ]
+    // }));
 
-    kdaRole.addToPolicy(new iam.PolicyStatement({
-      actions: [ 'logs:PutLogEvents' ],
-      resources: [ logStreamArn ]
-    }));
+    // kdaRole.addToPolicy(new iam.PolicyStatement({
+    //   actions: [ 'logs:PutLogEvents' ],
+    //   resources: [ logStreamArn ]
+    // }));
 
-    const kdaApp = new kda.CfnApplicationV2(this, 'KdaApplication', {
-      runtimeEnvironment: 'FLINK-1_8',
-      serviceExecutionRole: kdaRole.roleArn,
-      applicationName: `${cdk.Aws.STACK_NAME}`,
-      applicationConfiguration: {
-        environmentProperties: {
-          propertyGroups: [
-            {
-              propertyGroupId: 'FlinkApplicationProperties',
-              propertyMap: {
-                OutputBucket: `s3://${bucket.bucketName}/streaming-etl-output/`,
-                ParquetConversion: true,
-                InputKinesisStream: stream.streamName
-              },
-            }
-          ]
-        },
-        flinkApplicationConfiguration: {
-          monitoringConfiguration: {
-            logLevel: 'INFO',
-            metricsLevel: 'TASK',
-            configurationType: 'CUSTOM'
-          },
-          parallelismConfiguration: {
-            autoScalingEnabled: false,
-            parallelism: 2,
-            parallelismPerKpu: 1,
-            configurationType: 'CUSTOM'
-          },
-          checkpointConfiguration: {
-            configurationType: "CUSTOM",
-            checkpointInterval: 60_000,
-            minPauseBetweenCheckpoints: 60_000,
-            checkpointingEnabled: true
-          }
-        },
-        applicationSnapshotConfiguration: {
-          snapshotsEnabled: false
-        },
-        applicationCodeConfiguration: {
-          codeContent: {
-            s3ContentLocation: {
-              bucketArn: bucket.bucketArn,
-              fileKey: 'target/amazon-kinesis-analytics-streaming-etl-1.0-SNAPSHOT.jar'        
-            }
-          },
-          codeContentType: 'ZIPFILE'
-        }
-      }
-    });
+    // const kdaApp = new kda.CfnApplicationV2(this, 'KdaApplication', {
+    //   runtimeEnvironment: 'FLINK-1_8',
+    //   serviceExecutionRole: kdaRole.roleArn,
+    //   applicationName: `${cdk.Aws.STACK_NAME}`,
+    //   applicationConfiguration: {
+    //     environmentProperties: {
+    //       propertyGroups: [
+    //         {
+    //           propertyGroupId: 'FlinkApplicationProperties',
+    //           propertyMap: {
+    //             OutputBucket: `s3://${bucket.bucketName}/streaming-etl-output/`,
+    //             ParquetConversion: true,
+    //             InputKinesisStream: stream.streamName
+    //           },
+    //         }
+    //       ]
+    //     },
+    //     flinkApplicationConfiguration: {
+    //       monitoringConfiguration: {
+    //         logLevel: 'INFO',
+    //         metricsLevel: 'TASK',
+    //         configurationType: 'CUSTOM'
+    //       },
+    //       parallelismConfiguration: {
+    //         autoScalingEnabled: false,
+    //         parallelism: 2,
+    //         parallelismPerKpu: 1,
+    //         configurationType: 'CUSTOM'
+    //       },
+    //       checkpointConfiguration: {
+    //         configurationType: "CUSTOM",
+    //         checkpointInterval: 60_000,
+    //         minPauseBetweenCheckpoints: 60_000,
+    //         checkpointingEnabled: true
+    //       }
+    //     },
+    //     applicationSnapshotConfiguration: {
+    //       snapshotsEnabled: false
+    //     },
+    //     applicationCodeConfiguration: {
+    //       codeContent: {
+    //         s3ContentLocation: {
+    //           bucketArn: bucket.bucketArn,
+    //           fileKey: 'target/amazon-kinesis-analytics-streaming-etl-1.0-SNAPSHOT.jar'        
+    //         }
+    //       },
+    //       codeContentType: 'ZIPFILE'
+    //     }
+    //   }
+    // });
 
-    new kda.CfnApplicationCloudWatchLoggingOptionV2(this, 'KdsFlinkProducerLogging', {
-        applicationName: kdaApp.ref.toString(),
-        cloudWatchLoggingOption: {
-          logStreamArn: logStreamArn
-        }
-    });
+    // new kda.CfnApplicationCloudWatchLoggingOptionV2(this, 'KdsFlinkProducerLogging', {
+    //     applicationName: kdaApp.ref.toString(),
+    //     cloudWatchLoggingOption: {
+    //       logStreamArn: logStreamArn
+    //     }
+    // });
 
-    kdaApp.addDependsOn(artifacts.consumerBuildSuccessWaitCondition);
-    kdaApp.addDependsOn(emptyBucket.customResource);       //ensures that the app is stopped before the bucket is emptied
+    // kdaApp.addDependsOn(artifacts.consumerBuildSuccessWaitCondition);
+    // kdaApp.addDependsOn(emptyBucket.customResource);       //ensures that the app is stopped before the bucket is emptied
 
     new StreamDashboard(this, 'InputStreamDashboard', {
       stream: stream,

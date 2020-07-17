@@ -6,8 +6,6 @@ import ecsPatterns = require('@aws-cdk/aws-ecs-patterns');
 import ga = require('@aws-cdk/aws-globalaccelerator');
 
 export interface RegionServiceProps extends cdk.StackProps {
-  hostedZoneId: string,
-  hostedZoneName: string,
   listenerArn: string   
 }
 
@@ -68,8 +66,6 @@ export class RegionServiceStack extends cdk.Stack {
       unhealthyThresholdCount: 2,
       healthyHttpCodes: "200,301,302"
     })
-
-    const region = cdk.Aws.REGION
 
     new ga.CfnEndpointGroup(this, "endpoint", {
       endpointGroupRegion: cdk.Aws.REGION,

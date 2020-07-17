@@ -1,0 +1,90 @@
+{
+    "Table": {
+        "Name": "r_sensors",
+        "DatabaseName": "secure_db",
+        "Owner": "owner",
+        "CreateTime": "2020-06-26T08:58:20-04:00",
+        "UpdateTime": "2020-06-26T08:58:20-04:00",
+        "LastAccessTime": "2020-06-26T08:58:20-04:00",
+        "Retention": 0,
+        "StorageDescriptor": {
+            "Columns": [
+                {
+                    "Name": "datetime",
+                    "Type": "string"
+                },
+                {
+                    "Name": "sensorid",
+                    "Type": "int"
+                },
+                {
+                    "Name": "temp",
+                    "Type": "int"
+                },
+                {
+                    "Name": "battery",
+                    "Type": "string"
+                }
+            ],
+            "Location": "s3://gluesecurebucketstack-rawdatalakebucket33783e46-e7wfc51z65po/data/sensors/",
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "Compressed": false,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+                "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
+                "Parameters": {
+                    "paths": "battery,datetime,sensorid,temp"
+                }
+            },
+            "BucketColumns": [],
+            "SortColumns": [],
+            "Parameters": {
+                "CrawlerSchemaDeserializerVersion": "1.0",
+                "CrawlerSchemaSerializerVersion": "1.0",
+                "UPDATED_BY_CRAWLER": "RawSensorSecureCrawler-EkkD48hMBVUD",
+                "averageRecordSize": "95",
+                "classification": "json",
+                "compressionType": "none",
+                "objectCount": "22",
+                "recordCount": "10024",
+                "sizeKey": "953135",
+                "typeOfData": "file"
+            },
+            "StoredAsSubDirectories": false
+        },
+        "PartitionKeys": [
+            {
+                "Name": "year",
+                "Type": "string"
+            },
+            {
+                "Name": "month",
+                "Type": "string"
+            },
+            {
+                "Name": "day",
+                "Type": "string"
+            },
+            {
+                "Name": "hour",
+                "Type": "string"
+            }
+        ],
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {
+            "CrawlerSchemaDeserializerVersion": "1.0",
+            "CrawlerSchemaSerializerVersion": "1.0",
+            "UPDATED_BY_CRAWLER": "RawSensorSecureCrawler-EkkD48hMBVUD",
+            "averageRecordSize": "95",
+            "classification": "json",
+            "compressionType": "none",
+            "objectCount": "22",
+            "recordCount": "10024",
+            "sizeKey": "953135",
+            "typeOfData": "file"
+        },
+        "CreatedBy": "arn:aws:sts::649037252677:assumed-role/AWSGlueServiceRole-secure/AWS-Crawler",
+        "IsRegisteredWithLakeFormation": true
+    }
+}
